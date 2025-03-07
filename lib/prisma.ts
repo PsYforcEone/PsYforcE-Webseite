@@ -1,12 +1,19 @@
 import { PrismaClient } from "@prisma/client"
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
+// PrismaClient ist an Node.js gebunden und sollte nicht im Browser verwendet werden.
+// Siehe: https://www.prisma.io/docs/concepts/components/prisma-client/working-with-prismaclient/instantiate-prisma-client
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ["query"],
-  })
+let prisma: PrismaClient
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV === "production") {
+  prisma = new PrismaClient()
+} else {
+  // Während der Entwicklung vermeiden wir mehrere Instanzen des PrismaClient
+  if (!global.prisma) {
+    global.prisma = new PrismaClient()
+  }
+  prisma = global.prisma
+}
+
+export default prisma
 

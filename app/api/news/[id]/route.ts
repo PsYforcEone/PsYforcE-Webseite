@@ -1,117 +1,102 @@
-import { requireAuth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
 import { type NextRequest, NextResponse } from "next/server"
+import prisma from "@/lib/prisma"
 import slugify from "slugify"
 
+// Nachricht nach ID oder Slug abrufen
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Authentifizierung prüfen
-    const user = await requireAuth()
+    const id = params.id
 
-    if (!user) {
-      return NextResponse.json({ message: "Nicht autorisiert" }, { status: 401 })
+    // Prüfen, ob es sich um eine UUID oder einen Slug handelt
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
+    let news
+    if (isUUID) {
+      news = await prisma.news.findUnique({
+        where: { id },
+      })
+    } else {
+      news = await prisma.news.findUnique({
+        where: { slug: id },
+      })
     }
 
-    // News-Artikel abrufen
-    const newsItem = await prisma.news.findUnique({
-      where: {
-        id: params.id,
-      },
-    })
-
-    if (!newsItem) {
-      return NextResponse.json({ message: "News-Artikel nicht gefunden" }, { status: 404 })
+    if (!news) {
+      return NextResponse.json({ error: "Nachricht nicht gefunden" }, { status: 404 })
     }
 
-    return NextResponse.json(newsItem, { status: 200 })
+    return NextResponse.json(news)
   } catch (error) {
-    console.error("Error fetching news item:", error)
-    return NextResponse.json({ message: "Ein Fehler ist aufgetreten" }, { status: 500 })
+    console.error("Fehler beim Abrufen der Nachricht:", error)
+    return NextResponse.json({ error: "Interner Serverfehler" }, { status: 500 })
   }
 }
 
+// Nachricht aktualisieren
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Authentifizierung prüfen
-    const user = await requireAuth()
+    const id = params.id
+    const { title, content } = await request.json()
 
-    if (!user) {
-      return NextResponse.json({ message: "Nicht autorisiert" }, { status: 401 })
+    if (!title && !content) {
+      return NextResponse.json({ error: "Mindestens ein Feld muss aktualisiert werden" }, { status: 400 })
     }
 
-    const { title, content, excerpt, category, published } = await request.json()
-
-    if (!title || !content) {
-      return NextResponse.json({ message: "Titel und Inhalt sind erforderlich" }, { status: 400 })
-    }
-
-    // Prüfen, ob News-Artikel existiert
+    // Prüfen, ob die Nachricht existiert
     const existingNews = await prisma.news.findUnique({
-      where: {
-        id: params.id,
-      },
+      where: { id },
     })
 
     if (!existingNews) {
-      return NextResponse.json({ message: "News-Artikel nicht gefunden" }, { status: 404 })
+      return NextResponse.json({ error: "Nachricht nicht gefunden" }, { status: 404 })
     }
 
-    // Slug generieren
-    const slug = slugify(title, { lower: true, strict: true })
+    // Daten für die Aktualisierung vorbereiten
+    const updateData: any = {}
+    if (title) {
+      updateData.title = title
+      updateData.slug = slugify(title, { lower: true, strict: true })
+    }
+    if (content) {
+      updateData.content = content
+    }
 
-    // News-Artikel aktualisieren
+    // Nachricht aktualisieren
     const updatedNews = await prisma.news.update({
-      where: {
-        id: params.id,
-      },
-      data: {
-        title,
-        slug,
-        content,
-        excerpt: excerpt || "",
-        category: category || "releases",
-        published: published || false,
-      },
+      where: { id },
+      data: updateData,
     })
 
-    return NextResponse.json({ message: "News-Artikel erfolgreich aktualisiert", news: updatedNews }, { status: 200 })
+    return NextResponse.json(updatedNews)
   } catch (error) {
-    console.error("Error updating news item:", error)
-    return NextResponse.json({ message: "Ein Fehler ist aufgetreten" }, { status: 500 })
+    console.error("Fehler beim Aktualisieren der Nachricht:", error)
+    return NextResponse.json({ error: "Interner Serverfehler" }, { status: 500 })
   }
 }
 
+// Nachricht löschen
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Authentifizierung prüfen
-    const user = await requireAuth()
+    const id = params.id
 
-    if (!user) {
-      return NextResponse.json({ message: "Nicht autorisiert" }, { status: 401 })
-    }
-
-    // Prüfen, ob News-Artikel existiert
+    // Prüfen, ob die Nachricht existiert
     const existingNews = await prisma.news.findUnique({
-      where: {
-        id: params.id,
-      },
+      where: { id },
     })
 
     if (!existingNews) {
-      return NextResponse.json({ message: "News-Artikel nicht gefunden" }, { status: 404 })
+      return NextResponse.json({ error: "Nachricht nicht gefunden" }, { status: 404 })
     }
 
-    // News-Artikel löschen
+    // Nachricht löschen
     await prisma.news.delete({
-      where: {
-        id: params.id,
-      },
+      where: { id },
     })
 
-    return NextResponse.json({ message: "News-Artikel erfolgreich gelöscht" }, { status: 200 })
+    return NextResponse.json({ message: "Nachricht erfolgreich gelöscht" }, { status: 200 })
   } catch (error) {
-    console.error("Error deleting news item:", error)
-    return NextResponse.json({ message: "Ein Fehler ist aufgetreten" }, { status: 500 })
+    console.error("Fehler beim Löschen der Nachricht:", error)
+    return NextResponse.json({ error: "Interner Serverfehler" }, { status: 500 })
   }
 }
 
