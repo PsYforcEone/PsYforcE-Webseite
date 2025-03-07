@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("editor")
+  createdAt DateTime @default(now())
+  news      News[]
+}
+
+model Settings {
+  id              String   @id @default("settings")
+  siteName        String   @default("PsYforcE Music")
+  siteDescription String?
+  contactEmail    String?
+  contactPhone    String?
+  contactAddress  String?
+  spotifyUrl      String?
+  youtubeUrl      String?
+  instagramUrl    String?
+  twitterUrl      String?
+  twitchUrl       String?
+  soundcloudUrl   String?
+  updatedAt       DateTime @updatedAt
+}
+
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  excerpt   String?
+  image     String?
+  category  String   @default("releases")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+}
+
+model Release {
+  id           String   @id @default(cuid())
+  title        String
+  type         String   @default("single")
+  releaseDate  String
+  coverImage   String?
+  spotifyId    String?
+  soundcloudUrl String?
+  description  String?
+  featured     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  date        String
+  time        String?
+  location    String
+  description String?
+  ticketUrl   String?
+  image       String?
+  isSoldOut   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  title       String
+  youtubeId   String?
+  category    String   @default("music")
+  description String?
+  publishDate String?
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model GuestbookEntry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String   @default("allgemein")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  price       String
+  description String?
+  image       String?
+  category    String   @default("merch")
+  inStock     Boolean  @default(true)
+  isNew       Boolean  @default(false)
+  isLimited   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AboutContent {
+  id        String   @id @default("about")
+  title     String
+  content   String
+  image     String?
+  updatedAt DateTime @updatedAt
+}
+
+model SocialPost {
+  id        String   @id @default(cuid())
+  platform  String
+  content   String
+  image     String?
+  postDate  String
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  retweets  Int?
+  url       String?
+  createdAt DateTime @default(now())
+}
+
